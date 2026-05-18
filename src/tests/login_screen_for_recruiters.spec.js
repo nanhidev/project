@@ -1,45 +1,80 @@
-// src/pages/LoginScreenForRecruitersPage.js
-class LoginScreenForRecruitersPage {
-    constructor(page) {
-        this.page = page;
-        this.emailInput = page.locator('input[type="email"], input[name="email"], #email, [placeholder*="email" i]').first();
-        this.passwordInput = page.locator('input[type="password"], input[name="password"], #password, [placeholder*="password" i]').first();
-        this.loginButton = page.locator('button[type="submit"], button:has-text("Login"), button:has-text("Sign in")').first();
-        this.getStartedButton = page.locator('text=Get Started').first();
-        this.continueAsOrganizationButton = page.locator('text=Continue as Organization').first();
-    }
+// src/tests/LoginScreenForRecruiters.spec.js
+require('dotenv').config();
 
-    async navigate() {
-        await this.page.goto(process.env.BASE_URL);
-        await this.page.waitForLoadState('networkidle');
-    }
+const { test, expect } = require('@playwright/test');
+const LoginScreenForRecruitersPage = require('../pages/LoginScreenForRecruitersPage');
 
-    async goToSignin() {
-        const url = this.page.url();
-        if (!/signin|login/i.test(url)) {
-            await this.getStartedButton.waitFor({ state: 'visible' });
-            await this.getStartedButton.click();
-            await this.page.waitForLoadState('networkidle');
-            await this.continueAsOrganizationButton.waitFor({ state: 'visible' });
-            await this.continueAsOrganizationButton.click();
-            await this.page.waitForLoadState('networkidle');
-        }
-    }
+test('Login Screen for Recruiters - Get Started Flow', async ({ page }) => {
+  const loginPage = new LoginScreenForRecruitersPage(page);
 
-    async login() {
-        await this.emailInput.waitFor({ state: 'visible' });
-        await this.emailInput.fill(process.env.EMAIL);
-        await this.passwordInput.waitFor({ state: 'visible' });
-        await this.passwordInput.fill(process.env.PASSWORD);
-        await this.loginButton.waitFor({ state: 'visible' });
-        await this.loginButton.click();
-        await this.page.waitForLoadState('networkidle');
-    }
+  await loginPage.navigate(process.env.BASE_URL);
+  await loginPage.goToSignin();
 
-    async verifyDashboard() {
-        await this.page.waitForLoadState('networkidle');
-        await this.page.waitForURL(/dashboard|home|recruiter/i, { timeout: 30000 });
-    }
-}
+  await loginPage.enterEmail('recruiter@example.com');
+  await loginPage.enterPassword('SecurePassword123');
 
-module.exports = LoginScreenForRecruitersPage;
+  await loginPage.clickLogin();
+  await loginPage.verifyDashboard();
+});
+
+test('Login Screen for Recruiters - Show/Hide Password', async ({ page }) => {
+  const loginPage = new LoginScreenForRecruitersPage(page);
+
+  await loginPage.navigate(process.env.BASE_URL);
+  await loginPage.goToSignin();
+
+  await loginPage.enterPassword('P@ssw0rd123');
+  const passwordField = this.page.locator('input[type="password"], input[name="password"], [placeholder*="password" i], #password').first();
+  
+  await passwordField.waitFor({ state: 'visible' });
+  await this.page.locator('text=Show/Hide Password').first().click();
+  await expect(passwordField).toHaveAttribute('type', 'text');
+  
+  await this.page.locator('text=Show/Hide Password').first().click();
+  await expect(passwordField).toHaveAttribute('type', 'password');
+});
+
+test('Login Screen for Recruiters - Login Button Enabled', async ({ page }) => {
+  const loginPage = new LoginScreenForRecruitersPage(page);
+
+  await loginPage.navigate(process.env.BASE_URL);
+  await loginPage.goToSignin();
+
+  await loginPage.enterEmail('krishna@gmail.com');
+  await loginPage.enterPassword('SecurePassword123');
+
+  const loginButton = this.page.locator('button:has-text("Login"), button:has-text("Sign in"), [type="submit"]').first();
+  await expect(loginButton).toBeEnabled();
+});
+
+test('Login Screen for Recruiters - Valid Email Formats', async ({ page }) => {
+  const loginPage = new LoginScreenForRecruitersPage(page);
+
+  await loginPage.navigate(process.env.BASE_URL);
+  await loginPage.goToSignin();
+
+  const validEmails = ['user.name@subdomain.example.com', 'user+test@example.com'];
+  for (const email of validEmails) {
+    await loginPage.enterEmail(email);
+    await loginPage.enterPassword('ValidPassword123');
+    await loginPage.clickLogin();
+    await loginPage.verifyDashboard();
+    await loginPage.navigate(process.env.BASE_URL); // Reset for next iteration
+  }
+});
+
+test('Login Screen for Recruiters - Responsive Login', async ({ page }) => {
+  const loginPage = new LoginScreenForRecruitersPage(page);
+
+  await loginPage.navigate(process.env.BASE_URL);
+  await loginPage.goToSignin();
+  
+  const devices = ['Desktop', 'Tablet', 'Mobile'];
+  for (const device of devices) {
+    await loginPage.enterEmail('recruiter@example.com');
+    await loginPage.enterPassword('SecurePassword123');
+    await loginPage.clickLogin();
+    await loginPage.verifyDashboard();
+    await loginPage.navigate(process.env.BASE_URL); // Reset for next iteration
+  }
+});
